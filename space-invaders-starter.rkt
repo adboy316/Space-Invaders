@@ -115,10 +115,10 @@
 ;; 
 (define (main game)
   (big-bang game                   ; game
-            (on-tick   tock)       ; game -> game
-            (to-draw   render)     ; game -> Image
-            (stop-when game-over)  ; game -> Boolean
-            (on-key    fire)))     ; game KeyEvent -> game
+    (on-tick   tock)       ; game -> game
+    (to-draw   render)     ; game -> Image
+    (stop-when game-over)  ; game -> Boolean
+    (on-key    fire)))     ; game KeyEvent -> game
 
 ;; Game -> Game
 ;; produce the next instance of the game 
@@ -134,14 +134,12 @@
 
 (define (tock g)
   (make-game
-       (next-loi  (game-invaders g))
-       (next-lom (game-missiles g))
-       (next-tank     (game-tank g))))
+   (next-loi  (game-invaders g))
+   (next-lom  (game-missiles g))
+   (next-tank (game-tank     g))))
 
 ;;-----------------
 ;; Tock Helpers
-
-
 
 ;; ListOfInvader -> ListOfInvader
 ;; Produce filtered and ticked list of invaders
@@ -153,7 +151,7 @@
 ;(define (next-loi loi) (list I1)) ; stub
 
 (define (next-loi loi)
-  (onscreen-only (tick-invaders loi)))
+  (notHit-only (tick-invaders loi)))
 
 
 ;; ListiOInvaders -> ListOfInvaders
@@ -182,9 +180,29 @@
 
 
 ;; ListiOInvaders -> ListOfInvaders
-;; Produce a list of invaders containing only the invaders that are onscreen?
-;; !!!
-(define (onscreen-only loi) empty) ;stub
+;; Produce a list of invaders containing only the invaders that are notHit?
+(check-expect (notHit-only empty) empty)
+(check-expect (notHit-only (list I1)) (list I1))
+(check-expect (notHit-only (list (make-invader (missile-x M2) (missile-y M2) 10)))
+              empty)
+
+(check-expect (notHit-only (list (make-invader (missile-x M2) (missile-y M2) 10)
+                                 (make-invader 155 125 -10)))
+              (list (make-invader 155 125 -10)))
+
+;;(define (notHit-only loi) empty) ;stub
+
+(define (notHit-only loi)
+  (cond [(empty? loi) empty]                   
+        [else
+         (if (notHit? (first loi))
+             (list (first loi) (notHit-only (rest loi)))
+             (list (notHit-only (rest loi))))]))
+
+;; Invader ListOfMissiles -> Boolean
+;; Produce true if invader x and y coordinates = missile x and y coordinates, else produce false
+
+(define (notHit? inv) false)
 
 
 ;; ListOfMissiles -> ListOfMissiles
