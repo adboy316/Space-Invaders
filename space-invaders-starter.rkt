@@ -146,7 +146,7 @@
 (check-random (next-loi empty empty)
               (list (make-invader (random WIDTH) 50 12))) ;no invaders/missiles
 
-(check-expect (next-loi I1 empty)
+(check-expect (next-loi (list I1) empty)
               (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12))) ;invaders/no missiles
 (check-expect (next-loi (list I1 I2) empty)
               (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)
@@ -155,10 +155,10 @@
 (check-expect (next-loi (list I1) (list M1))
               (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12))) ;invaders/missiles no-hit single
 (check-expect (next-loi (list I1)
-                        (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))
+                        (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ))))
                empty) ;invaders/missiles hit single
 (check-expect (next-loi (list I1 I2)
-                        (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))
+                        (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ))))
                (make-invader (+ 150 INVADER-X-SPEED)  (+ HEIGHT INVADER-Y-SPEED) -10)) ;invaders/missiles hit 1 miss 1
 
 
@@ -172,7 +172,7 @@
 ;; ListiOInvaders ListOfMissiles -> ListOfInvaders 
 ;; Produce list of ticked invaders
 (check-expect (tick-invaders empty) empty)
-(check-expect (tick-invaders (list I1 I2) empty)
+(check-expect (tick-invaders (list I1 I2))
               (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12)
                     (make-invader (+ 150 INVADER-X-SPEED) (+ HEIGHT INVADER-Y-SPEED) -10)
                     empty))
@@ -186,7 +186,8 @@
 
 (define (tick-invaders loi)
   (cond [(empty? loi) empty]                   
-        [else (list (advance-invader  (first loi))                
+        [else
+         (list (advance-invader  (first loi))                
                     (tick-invaders    (rest loi)))]))
 
 ;; Invader -> Invader
