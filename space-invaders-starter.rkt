@@ -134,27 +134,68 @@
 
 (define (tock g)
   (make-game
-       (advance-loi  (game-invaders g))
-       (advance-lom (game-missiles g))
-       (advance-tank     (game-tank g))))
+       (next-loi  (game-invaders g))
+       (next-lom (game-missiles g))
+       (next-tank     (game-tank g))))
 
 ;;-----------------
 ;; Tock Helpers
 
+
+
 ;; ListOfInvader -> ListOfInvader
-;; Advance invaders x and y screen coordinates by X-SPEED and Y-SPEED
+;; Produce filtered and ticked list of invaders
+(check-expect (next-loi empty)(list (make-invader (random WIDTH) 50 12)))
+(check-expect (next-loi empty) (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))
+(check-expect (next-loi (list I1 I2)) (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))
+(check-expect (next-loi (list I1 I3)) (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))
+
+;(define (next-loi loi) (list I1)) ; stub
+
+(define (next-loi loi)
+  (onscreen-only (tick-invaders loi)))
+
+
+;; ListiOInvaders -> ListOfInvaders
+;; Produce list of ticked invaders
+(check-expect (tick-invaders empty) empty)
+(check-expect (tick-invaders (list I1 I2)) (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12)
+                                                 (make-invader (+ 150 INVADER-X-SPEED) (+ HEIGHT INVADER-Y-SPEED) -10)))
+
+;(define (tick-invaders loi) empty) ;stub
+
+(define (tick-invaders loi)
+  (cond [(empty? loi) empty]                   
+        [else (list (advance-invader (first loi))                
+                    (tick-invaders   (rest loi)))]))
+
+;; Invader -> Invader
+;; Produce a new invader that is INVADER-X-SPEED and INVADER-Y-SPEED pixels down the screen
+(check-expect (advance-invader I1) (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12))
+
+
+;(define (advance-invader inv) I1) ;stub
+(define (advance-invader inv)
+  (make-invader (+ (invader-x inv) INVADER-X-SPEED)
+                (+ (invader-y inv) INVADER-Y-SPEED)
+                (invader-dx inv)))
+
+
+;; ListiOInvaders -> ListOfInvaders
+;; Produce a list of invaders containing only the invaders that are onscreen?
 ;; !!!
-(define (advance-loi loi) (list I1)) ; stub
+(define (onscreen-only loi) empty) ;stub
+
 
 ;; ListOfMissiles -> ListOfMissiles
-;; Advance missiles y screen coordinates by MISSILE-SPEED
+;; Produce list of ticked invaders
 ;; !!!
-(define (advance-lom lom) (list M1)) ; stub
+(define (next-lom lom) (list M1)) ; stub
 
 ;; Tank -> Tank
 ;; Advance tank screen coordinates by TANK-SPEED if dir = 1, by -TANK-SPEED if dir = -1
 ;; !!!
-(define (advance-tanklom t) (make-tank (/ WIDTH 2) 1)) ; stub
+(define (next-tank t) (make-tank (/ WIDTH 2) 1)) ; stub
 
 
 ;;----------------
