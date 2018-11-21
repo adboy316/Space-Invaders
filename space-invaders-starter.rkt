@@ -108,21 +108,23 @@
 (define G2 (make-game (list I1) (list M1) T1))
 (define G3 (make-game (list I1 I2) (list M1 M2) T2))
 
+
+
 ;; Functions:
 
 ;; Game -> Game
 ;; start the world with (main G0)
 ;; 
 (define (main game)
-  (big-bang game                   ; game
-    (on-tick   tock)       ; game -> game
-    (to-draw   render)     ; game -> Image
-    (stop-when game-over)  ; game -> Boolean
-    (on-key    fire)))     ; game KeyEvent -> game
+  (big-bang game            ; game
+    (on-tick   tock )       ; game -> game
+    (to-draw   render)      ; game -> Image
+    (stop-when game-over)   ; game -> Boolean
+    (on-key    fire)))      ; game KeyEvent -> game
 
 ;; Game -> Game
 ;; produce the next instance of the game 
-(check-expect (tock G0) (make-game (list (make-invader (random WIDTH) 50 12)) empty ; Start-game
+(check-random (tock G0) (make-game (generate-inv empty) empty ; Start-game
                                    (make-tank (+ (/ WIDTH 2) TANK-SPEED) 1))) 
 
 (check-expect (tock G2) (make-game (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED) 12))          ;In-game
@@ -135,7 +137,7 @@
 (define (tock g)
   (make-game
    (next-loi  (game-invaders g) (game-missiles g))
-   (next-lom  (game-missiles g) (game-invaders g) )
+   (next-lom  (game-invaders g) (game-missiles g) )
    (next-tank (game-tank     g))))
 
 ;;-----------------
@@ -144,29 +146,26 @@
 ;; ListOfInvader ListOfMissiles -> ListOfInvader
 ;; Produce filtered and ticked lists of invaders 
 (check-random (next-loi empty empty)
-              (list (make-invader (random WIDTH) 50 12))) ;no invaders/missiles
+              (generate-inv empty)) ;no invaders/missiles
 
-(check-expect (next-loi (list I1) empty)
-              (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12))) ;invaders/no missiles
-(check-expect (next-loi (list I1 I2) empty)
-              (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12)
-                    (make-invader (+ 150 INVADER-X-SPEED)  (+ HEIGHT INVADER-Y-SPEED) -10)))
+(check-random (next-loi (list I1) empty)
+              (generate-inv (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))) ;invaders/no missiles
+(check-random (next-loi (list I1 I2) empty)
+              (generate-inv (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12)
+                                   (make-invader (+ 150 INVADER-X-SPEED)  (+ HEIGHT INVADER-Y-SPEED) -10))))
 
-(check-expect (next-loi (list I1) (list M1))
-              (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12))) ;invaders/missiles no-hit single
-(check-expect (next-loi (list I1)
+(check-random (next-loi (list I1) (list M1))
+              (generate-inv (list (make-invader (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ) 12)))) ;invaders/missiles no-hit single
+(check-random (next-loi (list I1)
+                        (list(make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ))))
+              (generate-inv empty)) ;invaders/missiles hit single
+(check-random (next-loi (list I1 I2)
                         (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ))))
-               empty) ;invaders/missiles hit single
-(check-expect (next-loi (list I1 I2)
-                        (list (make-missile (+ 150 INVADER-X-SPEED ) (+ 100 INVADER-Y-SPEED ))))
-               (list (make-invader (+ 150 INVADER-X-SPEED)  (+ HEIGHT INVADER-Y-SPEED) -10))) ;invaders/missiles hit 1 miss 1
+              (generate-inv (list (make-invader (+ 150 INVADER-X-SPEED) (+ HEIGHT INVADER-Y-SPEED) -10)))) ;invaders/missiles hit 1 miss 1
 
-
- 
-;(define (next-loi-lom loi lom) (list I1) empty) ; stub
 
 (define (next-loi loi lom)
-  (notHit-only (tick-invaders loi ) lom))
+  (notHit-only (generate-inv (tick-invaders loi)) lom))
 
 
 ;; ListiOInvaders  -> ListOfInvaders 
@@ -187,6 +186,24 @@
         [else
          (cons (advance-invader  (first loi))                
                (tick-invaders    (rest loi)))]))
+
+;; ListOfInvader -> ListOfInvader
+;; Consume ListOfInvader and produce ListOfInvaders with invaders randomly on top of screen
+(check-random (generate-inv empty) (cond [(< (random 99) INVADE-RATE)
+                                          (list (make-invader (random WIDTH) 0 (random 12)))]))
+
+
+(check-random (generate-inv (list I1)) (cond[(< (random 99) INVADE-RATE)
+                                             (list (make-invader (random WIDTH) 0 (random 12)) I1)]))
+
+;(define (generate-inv loi) (list I1)) ;stub
+
+
+(define (generate-inv loi)
+  (cond[(< (random 99) INVADE-RATE)
+        (cons (make-invader (random WIDTH) 0 (random 12)) loi)]
+       [else loi]))
+
 
 ;; Invader -> Invader
 ;; Produce a new invader that is INVADER-X-SPEED and INVADER-Y-SPEED pixels down the screen
@@ -219,7 +236,6 @@
 
 ;(define (notHit-only loi lom) empty) ;stub
 
-
 (define (notHit-only loi lom)
   (cond [(empty? loi) empty]                   
         [else
@@ -241,19 +257,115 @@
   (cond [(empty? lom) false]
         [else
          (if (equal? (make-missile (invader-x inv) (invader-y inv)) (first lom))
-              true
-              (noHit?  inv (rest lom)))]))
+             true
+             (noHit?  inv (rest lom)))]))
+
+
+;; ListOfInvaders ListOfMissiles -> ListOfMissiles
+;; Produce list of ticked and filtered missiles
+(check-expect (next-lom empty empty) empty) ;no missiles and no invaders
+
+(check-expect (next-lom (list I1) empty) empty) ;invaders no missiles
+
+(check-expect (next-lom (list I1 I2) (list (make-missile 150 300) (make-missile 145 245)))
+              (list (make-missile 150 (+ 300 MISSILE-SPEED)) (make-missile 145 (+ 245 MISSILE-SPEED)))) ;invaders and missile no hit
+
+(check-expect (next-lom (list (make-invader 150 100 12) (make-invader 130 100 12))
+                        (list (make-missile  150 100)   (make-missile 128 100)))
+              (list  (make-missile 128 (+ 100 MISSILE-SPEED))))
+               ;1 hit 1 miss
+
+(check-expect (next-lom (list (make-invader 150 100 12) (make-invader 130 100 12)) 
+                        (list (make-missile  150 100)   (make-missile 130 100)))
+               empty)  ;both hit           
+
+;(define (next-lom loi lom) empty) ; stub
+
+(define (next-lom loi lom)
+  (onscreen-only loi (tick-missiles lom)))
+
 
 
 ;; ListOfMissiles -> ListOfMissiles
-;; Produce list of ticked invaders
+;; Produce a list of ticked missiles
+(check-expect (tick-missiles empty) empty)
+
+(check-expect (tick-missiles (list (make-missile 150 200)))
+              (list (make-missile 150 (+ 200 MISSILE-SPEED))))
+
+(check-expect (tick-missiles (list (make-missile 150 200) (make-missile 150 220)))
+              (list (make-missile 150 (+ 200 MISSILE-SPEED)) (make-missile 150 (+ 220 MISSILE-SPEED))))
+
+;(define (tick-missiles lom) empty); stub
+(define (tick-missiles lom)
+  (cond [(empty? lom) empty]                   
+        [else (cons  (advance-missile (first lom))                 
+                     (tick-missiles (rest lom)))]))
+
+
+;; Missile -> Missile
+;; Advance missile y screen coordinate by MISSILE-SPEED
+(check-expect (advance-missile (make-missile 100 100))
+              (make-missile 100 (+ 100 MISSILE-SPEED)))
+
+;(define (advance-missile m) M1) ; stub
+
+(define (advance-missile m)
+  (make-missile (missile-x m) (+ (missile-y m) MISSILE-SPEED)))
+
+
+
+;; ListOfInvaders ListOfMissiles -> ListOfMissiles
+;; Produce a list of missiles containing only missiles that are onscreen
+   ; Filter missies that reach HEIGHT 0 and missiles that have hit invaders
+;; Assume missiles are already ticked
+(check-expect (onscreen-only empty empty) empty)
+
+(check-expect (onscreen-only (list I1 I2) empty) empty)
+
+(check-expect (onscreen-only (list I1 I2) (list (make-missile 100 110) (make-missile 100 120))) ;missiles miss
+              (list (make-missile 100 110)  (make-missile 100 110)))
+
+(check-expect (onscreen-only (list (make-invader 135 235 -10) (make-invader 165 205 -10)) ;1 hit and 1 miss
+                             (list (make-missile 135 235) (make-missile 160 200))) 
+               (list (make-missile 160 200)))
+
+(check-expect (onscreen-only (list (make-invader 135 235 -10) (make-invader 160 200 -10)) ;both missiles hit
+                             (list (make-missile 135 235) (make-missile 160 200))) 
+               empty)
+
+;(define (onscreen-only loi lom) empty) ;stub
+
+(define (onscreen-only loi lom)
+  (flew-away (missile-nohit loi lom)))
+
+;; LisOfInvaders ListOfMissiles -> ListOfMissiles
+;; Produce a ListOfMissiles that have not collided with invaders
 ;; !!!
-(define (next-lom loi lom) (list M1)) ; stub
+
+(define (missile-nohit loi lom) empty) ;stub
+
+
+;; ListOfMissiles -> ListOfMissiles
+;; Produce a list of missiles that have not flown away from screen (y coordinate is > 0)
+;; !!!
+
+(define (flew-away lom) empty) ;stub
+
 
 ;; Tank -> Tank
 ;; Advance tank screen coordinates by TANK-SPEED if dir = 1, by -TANK-SPEED if dir = -1
 ;; !!!
 (define (next-tank t) (make-tank (/ WIDTH 2) 1)) ; stub
+
+
+
+
+;;-----------------------------------------------------
+
+
+
+
 
 
 ;;----------------
