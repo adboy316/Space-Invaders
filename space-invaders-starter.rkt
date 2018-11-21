@@ -101,13 +101,10 @@
 (define (fn-for-missile m)
   (... (missile-x m) (missile-y m)))
 
-
-
 (define G0 (make-game empty empty T0))
 (define G1 (make-game empty empty T1))
 (define G2 (make-game (list I1) (list M1) T1))
 (define G3 (make-game (list I1 I2) (list M1 M2) T2))
-
 
 
 ;; Functions:
@@ -119,7 +116,7 @@
   (big-bang game            ; game
     (on-tick   tock )       ; game -> game
     (to-draw   render)      ; game -> Image
-    (stop-when game-over)   ; game -> Boolean
+    (stop-when game-over?)   ; game -> Boolean
     (on-key    fire)))      ; game KeyEvent -> game
 
 ;; Game -> Game
@@ -127,10 +124,12 @@
 (check-random (tock G0) (make-game (generate-inv empty) empty ; Start-game
                                    (make-tank (+ (/ WIDTH 2) TANK-SPEED) 1))) 
 
-(check-expect (tock G2) (make-game (list (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED) 12))          ;In-game
-                                   (list (make-missile 150 (+ 300 MISSILE-SPEED))) (make-tank (+ 50 TANK-SPEED) 1)))
-
-(check-expect (tock G3) G0 ) ;; Game-over
+(check-random (tock (make-game (list (make-invader 150 200 12) (make-invader 155 220 -10) (make-invader 225 233 -10))          ;In-game
+                                   (list (make-missile (+ 150 INVADER-X-SPEED) (+ 200 INVADER-Y-SPEED)) (make-missile 155 210) (make-missile 200 134))
+                                   (make-tank 50 1)))
+                    (make-game (list (make-invader 150 200 12) (make-invader 222 230 -10) (make-invader 225 233 -10))          ;In-game
+                                   (list (make-missile 150 200) (make-missile 155 220) (make-missile 200 134))
+                                   (make-tank (+ 50 TANK-SPEED) 1)))
 
 ;(define (tock g) (list G0)) ;stub
 
@@ -182,7 +181,7 @@
 ;(define (tick-invaders-missiles loi lom) empty) ;stub
 
 (define (tick-invaders loi)
-  (cond [(empty? loi) empty]                   
+  (cond [(empty? loi) empty]
         [else
          (cons (advance-invader  (first loi))                
                (tick-invaders    (rest loi)))]))
@@ -205,16 +204,16 @@
        [else loi]))
 
 
-;; Invader -> Invader
+;; Invader -> Invader Boolean
 ;; Produce a new invader that is INVADER-X-SPEED and INVADER-Y-SPEED pixels down the screen
 (check-expect (advance-invader I1) (make-invader (+ 150 INVADER-X-SPEED) (+ 100 INVADER-Y-SPEED ) 12))
 
 
 ;(define (advance-invader inv) I1) ;stub
 (define (advance-invader inv)
-  (make-invader (+ (invader-x inv) INVADER-X-SPEED)
-                (+ (invader-y inv) INVADER-Y-SPEED)
-                (invader-dx inv)))
+       (make-invader (+ (invader-x inv) INVADER-X-SPEED)
+                     (+ (invader-y inv) INVADER-Y-SPEED)
+                     (invader-dx inv)))
 
 
 ;; ListiOfInvaders ListOfMissiles -> ListOfInvaders 
@@ -237,7 +236,7 @@
 ;(define (notHit-only loi lom) empty) ;stub
 
 (define (notHit-only loi lom)
-  (cond [(empty? loi) empty]                   
+  (cond [(empty? loi) empty]
         [else
          (if (noHit? (first loi) lom)
              (notHit-only (rest loi) lom)
@@ -271,19 +270,17 @@
               (list (make-missile 150 (+ 300 MISSILE-SPEED)) (make-missile 145 (+ 245 MISSILE-SPEED)))) ;invaders and missile no hit
 
 (check-expect (next-lom (list (make-invader 150 100 12) (make-invader 130 100 12))
-                        (list (make-missile  150 100)   (make-missile 128 100)))
-              (list  (make-missile 128 (+ 100 MISSILE-SPEED))))
-               ;1 hit 1 miss
+                        (list (make-missile  150 90)   (make-missile 128 90)))
+              (list (make-missile 128 (+ 90 MISSILE-SPEED)))) ;1 hit 1 miss
 
 (check-expect (next-lom (list (make-invader 150 100 12) (make-invader 130 100 12)) 
-                        (list (make-missile  150 100)   (make-missile 130 100)))
+                        (list (make-missile  150 90)   (make-missile 130 90)))
                empty)  ;both hit           
 
 ;(define (next-lom loi lom) empty) ; stub
 
 (define (next-lom loi lom)
   (onscreen-only loi (tick-missiles lom)))
-
 
 
 ;; ListOfMissiles -> ListOfMissiles
@@ -324,7 +321,7 @@
 (check-expect (onscreen-only (list I1 I2) empty) empty)
 
 (check-expect (onscreen-only (list I1 I2) (list (make-missile 100 110) (make-missile 100 120))) ;missiles miss
-              (list (make-missile 100 110)  (make-missile 100 110)))
+              (list (make-missile 100 110)  (make-missile 100 120)))
 
 (check-expect (onscreen-only (list (make-invader 135 235 -10) (make-invader 165 205 -10)) ;1 hit and 1 miss
                              (list (make-missile 135 235) (make-missile 160 200))) 
@@ -341,23 +338,70 @@
 
 ;; LisOfInvaders ListOfMissiles -> ListOfMissiles
 ;; Produce a ListOfMissiles that have not collided with invaders
-;; !!!
 
-(define (missile-nohit loi lom) empty) ;stub
+(check-expect (missile-nohit (list (make-invader 135 235 -10) (make-invader 165 205 -10)) ;1 hit and 1 miss
+                             (list (make-missile 135 235) (make-missile 160 200))) 
+               (list (make-missile 160 200)))
+
+(check-expect (missile-nohit (list (make-invader 135 235 -10) (make-invader 160 200 -10)) ;both missiles hit
+                             (list (make-missile 135 235) (make-missile 160 200))) 
+               empty)
+
+;(define (missile-nohit loi lom) empty) ;stub
+
+(define (missile-nohit loi lom)
+  (cond [(empty? lom) empty]                   
+        [else
+         (if (noHit? (first loi) lom)
+             (missile-nohit (rest loi) (rest lom))
+             (cons (first lom) (missile-nohit (rest loi )(rest lom))))]))
+
+
+
+
+
+
+;;-----
 
 
 ;; ListOfMissiles -> ListOfMissiles
 ;; Produce a list of missiles that have not flown away from screen (y coordinate is > 0)
-;; !!!
+(check-expect (flew-away empty) empty)
+(check-expect (flew-away (list M1 M2)) (list M1 M2))
+(check-expect (flew-away (list M1 M2 (make-missile 200 1))) (list M1 M2 (make-missile 200 1)))
+(check-expect (flew-away (list M1 M2 (make-missile 200 0))) (list M1 M2))
+(check-expect (flew-away (list M1 M2 (make-missile 200 -1))) (list M1 M2))
 
-(define (flew-away lom) empty) ;stub
+;(define (flew-away lom) empty) ;stub
+
+(define (flew-away lom)
+  (cond [(empty? lom) empty]                   
+        [else
+         (if (flewaway? (first lom))
+             (flew-away (rest lom))
+             (cons (first lom) (flew-away (rest lom))))]))
+
+;; Missile -> Boolean
+;; Produce true if missile y coordiante is < 0, else false
+(check-expect (flewaway? M1) false)
+(check-expect (flewaway? (make-missile 200 0)) true)
+(check-expect (flewaway? (make-missile 200 -1)) true)
+
+;(define (flewaway? m) false) ;stub
+(define (flewaway? m)
+  (false? (> (missile-y m) 0)))
 
 
 ;; Tank -> Tank
 ;; Advance tank screen coordinates by TANK-SPEED if dir = 1, by -TANK-SPEED if dir = -1
-;; !!!
-(define (next-tank t) (make-tank (/ WIDTH 2) 1)) ; stub
+(check-expect (next-tank (make-tank 30 1)) (make-tank (+ 30 TANK-SPEED) 1))
+(check-expect (next-tank (make-tank 30 -1)) (make-tank (- 30 TANK-SPEED) -1))
 
+;(define (next-tank t) (make-tank (/ WIDTH 2) 1)) ; stub
+(define (next-tank t)
+  (if (> (tank-dir t) 0)
+         (make-tank (+ (tank-x t) TANK-SPEED) (tank-dir t))
+         (make-tank (- (tank-x t) TANK-SPEED) (tank-dir t))))
 
 
 
@@ -376,12 +420,49 @@
 ;; !!!
 (define (render game) BACKGROUND ) ;stub
 
-;; Game -> Boolean
-;; End game (produce true) when invader reaches bottom of the screen 
-;; !!!
-(define (game-over game) true) ;stub
-
 ;; Game KeyEvent -> Game
 ;; Handle key-events
 ;; !!!
 (define (fire game) G0) ;stub
+
+;;--------------
+;; Stop-when helper
+
+;; Game -> Boolean
+;; Consumes game and produces true if it contains an Invader with y coordinate => HEIGHT
+
+(check-expect (game-over? (make-game (list I1 (make-invader 100 200 10)) (list M1) T1)) false)
+(check-expect (game-over? (make-game (list (make-invader 100 HEIGHT -10)) (list M1) T1)) true)
+(check-expect (game-over? (make-game (list (make-invader 100 (+ 10 HEIGHT) 10)) (list M1) T1)) true)
+
+;(define (game-over? loi) false) ;stub
+
+(define (game-over? g)
+  (if (invader-touch? (game-invaders g))
+      true
+      false))
+
+
+;; ListOfInvader -> Boolean
+;; Consume ListOfInvader and produce true if invader y coordinate is => HEIGHT
+(check-expect (invader-touch? (list I1 (make-invader 100 200 10))) false)
+(check-expect (invader-touch? (list (make-invader 100 HEIGHT -10))) true)
+(check-expect (invader-touch? (list (make-invader 100 (+ 10 HEIGHT) 10))) true)
+
+;(define (invader-touch? loi) false) ;stub
+
+(define (invader-touch? loi)
+  (cond [(empty? loi) false]                   
+        [else
+         (if (touch? (first loi))
+              true
+              (invader-touch? (rest loi)))]))
+
+;; Invader -> Boolean
+;; Consume invader and produce true if invader y coordinate is => HEIGHT, else false
+
+(define (touch? inv)
+  (if  ( >= (invader-y inv) HEIGHT)
+       true
+       false))
+
